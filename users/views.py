@@ -1,6 +1,7 @@
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.authtoken.models import Token
 from django.contrib.auth import authenticate
 from .models import User
@@ -29,3 +30,20 @@ class LoginView(APIView):
 
         token, created = Token.objects.get_or_create(user=user)
         return Response({'token': token.key})
+
+
+
+class ProtectedView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        return Response({"message": f"Привет, {request.user.username}!"})
+    
+
+
+class LogoutView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        request.user.auth_token.delete()  # удаляем токен
+        return Response({'message': 'Вы вышли из системы'}, status=200)
