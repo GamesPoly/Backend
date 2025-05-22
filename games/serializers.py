@@ -28,6 +28,10 @@ class GameSerializer(serializers.ModelSerializer):
         queryset=Platform.objects.all()
     )
 
+    # Не обязательные поля при редактировании игры, чтобы не загружать повторно
+    image = serializers.ImageField(required=False)
+    game_file = serializers.FileField(required=False)
+
     class Meta:
         model = Game
         fields = '__all__'
@@ -75,19 +79,32 @@ class GameSerializer(serializers.ModelSerializer):
 
         team_slug = slugify(instance.dev_team or 'unknown')
 
-        if image:
-            if instance.image and default_storage.exists(instance.image.name):
-                default_storage.delete(instance.image.name)
-            image_path = f"games-store/{team_slug}/{image.name}"
-            saved_path = default_storage.save(image_path, ContentFile(image.read()))
-            instance.image.name = saved_path
+        # При обновлении - image необязательное поле
+        if image is not None:
+            if image:
+                if instance.image and default_storage.exists(instance.image.name):
+                    default_storage.delete(instance.image.name)
+                image_path = f"games-store/{team_slug}/{image.name}"
+                saved_path = default_storage.save(image_path, ContentFile(image.read()))
+                instance.image.name = saved_path
+            else:
+                # Если явно передан null или пустое значение - удалить файл
+                if instance.image and default_storage.exists(instance.image.name):
+                    default_storage.delete(instance.image.name)
+                instance.image = None
 
-        if game_file:
-            if instance.game_file and default_storage.exists(instance.game_file.name):
-                default_storage.delete(instance.game_file.name)
-            file_path = f"games-store/{team_slug}/{game_file.name}"
-            saved_path = default_storage.save(file_path, ContentFile(game_file.read()))
-            instance.game_file.name = saved_path
+        # Аналогично для game_file
+        if game_file is not None:
+            if game_file:
+                if instance.game_file and default_storage.exists(instance.game_file.name):
+                    default_storage.delete(instance.game_file.name)
+                file_path = f"games-store/{team_slug}/{game_file.name}"
+                saved_path = default_storage.save(file_path, ContentFile(game_file.read()))
+                instance.game_file.name = saved_path
+            else:
+                if instance.game_file and default_storage.exists(instance.game_file.name):
+                    default_storage.delete(instance.game_file.name)
+                instance.game_file = None
 
         instance.save()
 
